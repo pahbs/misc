@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equinox Plank Ledger</title>
+<meta name="description" content="Group planking challenge dashboard: who's in the black, who's in the red.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231b1a17'/><rect x='5' y='17' width='22' height='4' rx='2' fill='%23f6f1e7'/><circle cx='24' cy='12' r='3' fill='%23b3261e'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">General ledger · Core division</p>
+    <h1>The Equinox Plank Ledger</h1>
+    <p class="sub" id="sub">Fall equinox → spring equinox · 180 seconds a day · stay in the black</p>
+    <div class="source" id="source">Loading…</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card scrub">
+    <div class="scrub-row">
+      <button id="play" class="btn" aria-label="Replay the challenge">▶ Replay</button>
+      <input type="range" id="day" min="1" max="1" value="1" aria-label="Day of challenge">
+      <div class="scrub-label"><span id="dayLabel">Day 1</span><small id="dateLabel"></small></div>
+    </div>
+    <p class="hint">Drag to rewind the books. The ledger, standings and charts below show the day you pick.</p>
+  </section>
+
+  <section class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <h2>The Ledger</h2>
+        <div class="seg" id="sortSeg">
+          <button data-sort="balance" class="on">Balance</button>
+          <button data-sort="total">Total</button>
+          <button data-sort="streak">Streak</button>
+          <button data-sort="name">A–Z</button>
+        </div>
+      </div>
+      <p class="note">Balance = seconds planked minus 180 × days elapsed. <b class="ink">Black</b> means at or ahead of pace; <b class="red">(red)</b> means behind.</p>
+      <div class="ledger" id="ledger"></div>
+    </div>
+
+    <div class="col">
+      <div class="card split">
+        <h2>Black vs. red</h2>
+        <div id="donut"></div>
+      </div>
+      <div class="card">
+        <h2>Honors</h2>
+        <div class="awards" id="awards"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2 id="raceTitle">The balance race</h2>
+      <div class="seg" id="raceSeg">
+        <button data-mode="balance" class="on">Balance</button>
+        <button data-mode="cumulative">Cumulative</button>
+        <button data-mode="rolling">7-day avg</button>
+      </div>
+    </div>
+    <p class="note" id="raceNote">Each line is one planker. Above zero is in the black. Hover a line, or click a name in the ledger to follow someone.</p>
+    <div class="chart" id="race"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>The daily books</h2>
+      <div class="legend">
+        <span><i class="sw sw-blk3"></i>≥ 6 min</span>
+        <span><i class="sw sw-blk2"></i>≥ 4 min</span>
+        <span><i class="sw sw-blk1"></i>3 min+</span>
+        <span><i class="sw sw-red"></i>under 3 min</span>
+        <span><i class="sw sw-none"></i>none</span>
+      </div>
+    </div>
+    <p class="note">Every planker, every day. A black square means that day hit the 3-minute minimum.</p>
+    <div class="heat-wrap"><div id="heat"></div></div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card">
+      <h2>Group volume by day</h2>
+      <p class="note">Total seconds planked by everyone. The red line counts how many plankers hit 3 minutes that day.</p>
+      <div class="chart" id="volume"></div>
+    </div>
+    <div class="card">
+      <h2>When we plank</h2>
+      <p class="note">Submissions by hour of day and day of week. Darker means more planks.</p>
+      <div class="chart" id="clock"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Weekly statements</h2>
+    <p class="note">Percent of the 1,260-second weekly goal (7 × 180). Weeks start on Tuesday, matching the challenge start on Sept 22.</p>
+    <div class="weekly-wrap"><div id="weekly"></div></div>
+  </section>
+
+  <section class="card" id="profileCard">
+    <div class="card-head">
+      <h2>Personal account</h2>
+      <select id="who" aria-label="Choose a planker"></select>
+    </div>
+    <div id="profile"></div>
+  </section>
+
+  <section class="card">
+    <h2>Planker chatter</h2>
+    <div class="chatter" id="chatter"></div>
+  </section>
+
+  <footer class="foot">
+    <p>Data from the group's Google Form. Planks logged for a future date are booked on the day they were submitted; pre-equinox planks are booked on day 1.</p>
+    <p><a href="../">← All workouts</a></p>
+  </footer>
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<script src="app.js"></script>
+</body>
+</html>

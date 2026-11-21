@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workouts</title>
+<link rel="stylesheet" href="plank/style.css">
+<style>
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin:10px 0 40px}
+  .tile{display:block;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:20px 22px;transition:transform .15s,box-shadow .15s}
+  .tile:hover{transform:translateY(-2px);box-shadow:0 12px 28px -18px rgba(60,40,0,.45)}
+  .tile h2{margin-bottom:6px}
+  .tile p{margin:0;color:var(--muted);font-size:14px}
+  .tile.soon{opacity:.55;pointer-events:none;border-style:dashed}
+</style>
+</head>
+<body>
+<header class="masthead"><div class="wrap">
+  <p class="eyebrow">Training log</p>
+  <h1>Workouts</h1>
+  <p class="sub">Dashboards for the challenges we do together.</p>
+</div></header>
+<main class="wrap">
+  <div class="tiles">
+    <a class="tile" href="plank/"><h2>Equinox Plank Ledger</h2><p>Sept 22, 2026 → Mar 20, 2027 · 3 minutes a day · who's in the black, who's in the red.</p></a>
+    <div class="tile soon"><h2>Next challenge</h2><p>Add a folder next to <code>plank/</code> and link it here.</p></div>
+  </div>
+</main>
+</body>
+</html>
