@@ -96,9 +96,10 @@ function buildModel(rows) {
     if (!who || !ts || !isFinite(sec) || sec <= 0) continue;
     const given = r[C.day] ? parseMDY(r[C.day]) : null;
     let d = (given ? given.day : ts.day);
-    if (d > ts.day) d = ts.day;             // can't plank in the future: book on submission day
+    const moved = d > ts.day;
+    if (moved) d = ts.day;                  // can't plank in the future: book on submission day
     let idx = clamp(d - START, 0, CFG.days - 1);
-    entries.push({ who, idx, sec: Math.round(sec), tsDay: ts.day, hour: ts.hour, min: ts.min, tsRaw: ts.raw, note: (r[C.note] || "").trim() });
+    entries.push({ who, idx, moved, sec: Math.round(sec), tsDay: ts.day, hour: ts.hour, min: ts.min, tsRaw: ts.raw, note: (r[C.note] || "").trim() });
   }
   const names = [...new Set(entries.map(e => e.who))].sort((a, b) => a.localeCompare(b));
   const P = {};
@@ -215,8 +216,12 @@ function renderAwards(S) {
   const { M, D } = state;
   const es = M.entries.filter(e => e.idx <= D);
   const A = [];
-  const longest = es.reduce((m, e) => e.sec > (m?.sec || 0) ? e : m, null);
-  if (longest) A.push(["Longest hold", longest.who, `${mmss(longest.sec)} on ${fmtDate(longest.idx)}`]);
+  // Biggest day: most seconds one person logged on a single day (skips future-dated entries moved to their submission day)
+  const dayTot = new Map();
+  for (const e of es) if (!e.moved) { const k = e.who + "|" + e.idx; dayTot.set(k, (dayTot.get(k) || 0) + e.sec); }
+  let big = null;
+  for (const [k, v] of dayTot) if (!big || v > big.v) { const [n, i] = k.split("|"); big = { n, i: +i, v }; }
+  if (big) A.push(["Biggest day", big.n, `${mmss(big.v)} planked on ${fmtDate(big.i)}`]);
   let gDay = null;
   for (let i = 0; i <= D; i++) { let t = 0, c = 0; for (const n of M.names) { const v = M.P[n].daily[i]; t += v; if (v > 0) c++; } if (!gDay || c > gDay.c || (c === gDay.c && t > gDay.t)) gDay = { i, t, c }; }
   if (gDay) A.push(["Our best day together", fmtDate(gDay.i), `${gDay.c} plankers showed up · ${hrs(gDay.t)} hrs`]);
