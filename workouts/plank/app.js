@@ -150,7 +150,7 @@ function renderKPIs(S) {
 function sortStats(S) {
   const by = {
     balance: (a, b) => b.balance - a.balance || a.name.localeCompare(b.name),
-    total: (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+    consistency: (a, b) => b.black - a.black || b.balance - a.balance || a.name.localeCompare(b.name),
     streak: (a, b) => b.streak - a.streak || b.balance - a.balance,
     name: (a, b) => a.name.localeCompare(b.name),
   }[state.sort];
