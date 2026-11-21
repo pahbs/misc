@@ -4,9 +4,9 @@
   --red:#b3261e; --red-soft:#e9b3ad; --red-faint:#f6e2df;
   --blk1:#7d776b; --blk2:#45413a; --blk3:#1b1a17;
   --gold:#a9832f;
-  --serif: "Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
-  --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --serif: "Fraunces","Iowan Old Style",Georgia,serif;
+  --sans: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono: "JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
