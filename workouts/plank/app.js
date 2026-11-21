@@ -125,7 +125,7 @@ function statsAt(p, D) {
 }
 
 // ---------- State ----------
-const state = { M: null, D: 0, maxD: 0, sel: null, sort: "balance", race: "balance", playing: null, live: false };
+const state = { M: null, D: 0, maxD: 0, sel: null, sort: "name", race: "balance", playing: null, live: false };
 
 // ---------- Renderers ----------
 function renderKPIs(S) {
@@ -140,9 +140,9 @@ function renderKPIs(S) {
     <div class="kpi"><div class="lab">Planked together</div><div class="val">${hrs(total)}<small> hrs</small></div>
       <div class="bar"><i style="width:${Math.min(100, total / groupGoal * 100).toFixed(1)}%"></i></div><div class="foot">${(total / groupGoal * 100).toFixed(0)}% of the group finish line</div></div>
     <div class="kpi"><div class="lab">In the black</div><div class="val">${blackN}<small> of ${n}</small></div>
-      <div class="bar"><i style="width:${(blackN / n * 100).toFixed(1)}%"></i></div><div class="foot">${n - blackN} in the red</div></div>
-    <div class="kpi"><div class="lab">Group balance</div><div class="val ${groupBal < 0 ? "red" : ""}">${bal(groupBal)}<small> sec</small></div>
-      <div class="foot">Sum of everyone's ± pace</div></div>
+      <div class="bar"><i style="width:${(blackN / n * 100).toFixed(1)}%"></i></div><div class="foot">${n - blackN} working back to black</div></div>
+    <div class="kpi"><div class="lab">Showed up ${D === state.maxD ? "today" : "that day"}</div><div class="val">${S.filter(s => s.today > 0).length}<small> of ${n}</small></div>
+      <div class="bar"><i style="width:${(S.filter(s => s.today > 0).length / n * 100).toFixed(1)}%"></i></div><div class="foot">Every plank counts</div></div>
     <div class="kpi"><div class="lab">${D === state.maxD ? "Today" : "That day"}</div><div class="val">${mmss(todayTot / Math.max(1, S.filter(s => s.today > 0).length))}<small> avg</small></div>
       <div class="foot">${todayHit} hit 3:00 · ${num(todayTot)} sec total</div></div>`;
 }
@@ -160,13 +160,13 @@ function sortStats(S) {
 function renderLedger(S) {
   const rows = sortStats(S);
   const maxAbs = Math.max(1, ...rows.map(s => Math.abs(s.balance)));
-  let html = `<div class="lrow head"><span class="rk">#</span><span>Planker</span><span>± Pace</span><span class="amt">Balance</span><span class="stk">Streak</span></div>`;
+  let html = `<div class="lrow head"><span>Planker</span><span>± Pace</span><span class="amt">Balance</span><span class="stk">Streak</span></div>`;
   rows.forEach((s, i) => {
     const w = Math.abs(s.balance) / maxAbs * 50;
     const pos = s.balance >= 0;
     const nextNeg = state.sort === "balance" && pos && rows[i + 1] && rows[i + 1].balance < 0;
     html += `<div class="lrow${state.sel === s.name ? " sel" : ""}${nextNeg ? " ledger-zero" : ""}" data-name="${esc(s.name)}">
-      <span class="rk">${i + 1}</span><span class="nm">${esc(s.name)}</span>
+      <span class="nm">${esc(s.name)}</span>
       <span class="div-bar"><span class="zero"></span><span class="b ${pos ? "pos" : "neg"}" style="${pos ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`}"></span></span>
       <span class="amt ${pos ? "" : "neg"}">${bal(s.balance)}</span>
       <span class="stk">${s.streak ? `<b>${s.streak}</b> day${s.streak > 1 ? "s" : ""}` : "—"}</span></div>`;
@@ -195,12 +195,12 @@ function renderDonut(S) {
   const redTot = S.filter(s => s.balance < 0).reduce((x, s) => x + s.balance, 0);
   $("#donut").innerHTML = `<svg viewBox="0 0 140 140" width="140" height="140">${paths}
     <text x="70" y="68" text-anchor="middle" style="font:600 26px var(--serif);fill:var(--ink)">${Math.round(b / n * 100)}%</text>
-    <text x="70" y="86" text-anchor="middle" style="font-size:10px;letter-spacing:.12em">IN THE BLACK</text></svg>
+    <text x="70" y="86" text-anchor="middle" style="font-size:8px;letter-spacing:.1em">IN THE BLACK</text></svg>
     <div class="lg">
       <div><span>In the black</span><b>${b}</b></div>
-      <div><span>In the red</span><b class="red">${r}</b></div>
-      <div><span>Surplus held</span><span>${num(blackTot)} sec</span></div>
-      <div><span>Deficit owed</span><span class="red">${bal(redTot)} sec</span></div>
+      <div><span>Catching up</span><b class="red">${r}</b></div>
+      <div><span>Seconds banked</span><span>${num(blackTot)}</span></div>
+      <div><span>Seconds to catch up</span><span class="red">${num(-redTot)}</span></div>
     </div>`;
 }
 
@@ -209,19 +209,19 @@ function renderAwards(S) {
   const es = M.entries.filter(e => e.idx <= D);
   const A = [];
   const longest = es.reduce((m, e) => e.sec > (m?.sec || 0) ? e : m, null);
-  if (longest) A.push(["Longest single plank", longest.who, `${mmss(longest.sec)} on ${fmtDate(longest.idx)}`]);
-  let bigDay = null;
-  for (const n of M.names) for (let i = 0; i <= D; i++) { const v = M.P[n].daily[i]; if (!bigDay || v > bigDay.v) bigDay = { n, i, v }; }
-  if (bigDay) A.push(["Biggest day", bigDay.n, `${mmss(bigDay.v)} logged on ${fmtDate(bigDay.i)}`]);
+  if (longest) A.push(["Longest hold", longest.who, `${mmss(longest.sec)} on ${fmtDate(longest.idx)}`]);
+  let gDay = null;
+  for (let i = 0; i <= D; i++) { let t = 0, c = 0; for (const n of M.names) { const v = M.P[n].daily[i]; t += v; if (v > 0) c++; } if (!gDay || c > gDay.c || (c === gDay.c && t > gDay.t)) gDay = { i, t, c }; }
+  if (gDay) A.push(["Our best day together", fmtDate(gDay.i), `${gDay.c} plankers showed up · ${hrs(gDay.t)} hrs`]);
   const topBy = k => S.reduce((m, s) => s[k] > m[k] ? s : m, S[0]);
-  const st = topBy("streak"); A.push(["Hot streak", st.name, `${st.streak} straight days at 3:00+`]);
-  const bs = topBy("best"); A.push(["Iron streak", bs.name, `Best run: ${bs.best} days`]);
-  const mb = topBy("black"); A.push(["Most days in the black", mb.name, `${mb.black} of ${D + 1} days`]);
+  const st = topBy("streak"); if (st.streak) A.push(["Steady streak", st.name, `${st.streak} days in a row at 3:00+`]);
+  const bs = topBy("best"); A.push(["Longest run", bs.name, `${bs.best} days in a row`]);
+  const mb = topBy("black"); A.push(["Most consistent", mb.name, `Showed up for 3:00+ on ${mb.black} of ${D + 1} days`]);
   if (D >= 7) {
     const w = Math.min(14, D);
     let cb = null;
     for (const n of M.names) { const p = M.P[n]; const gain = (p.cum[D] - p.cum[D - w]) - CFG.min * w; if (!cb || gain > cb.g) cb = { n, g: gain }; }
-    A.push([`Hottest ${w} days`, cb.n, `${bal(cb.g)} sec ahead of pace lately`]);
+    A.push(["On a roll lately", cb.n, `Strong last ${w} days`]);
   }
   const times = {};
   for (const e of es) if (e.hour != null) (times[e.who] ||= []).push(e.hour + e.min / 60);
@@ -300,7 +300,7 @@ function renderRace() {
   }
   // end labels: top 3, bottom 3, selected
   const last = M.names.map(n => ({ n, v: series[n][D] })).sort((a, b) => b.v - a.v);
-  const pick = new Set([...last.slice(0, 3), ...last.slice(-3)].map(o => o.n)); if (sel) pick.add(sel);
+  const pick = new Set(sel ? [sel] : []);
   const labs = last.filter(o => pick.has(o.n)).map(o => ({ ...o, y: y(o.v) }));
   labs.sort((a, b) => a.y - b.y); for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 12) labs[i].y = labs[i - 1].y + 12;
   const endG = el("g", {}, svg);
@@ -314,17 +314,17 @@ function renderRace() {
     endG.querySelectorAll("text").forEach(t => t.style.opacity = !n || t.dataset.n === n ? 1 : .25);
   }
   focus(sel);
-  $("#raceTitle").textContent = { balance: "The balance race", cumulative: "Race to the finish line", rolling: "Recent form" }[mode];
+  $("#raceTitle").textContent = { balance: "Balances over time", cumulative: "Progress toward the finish line", rolling: "Recent rhythm" }[mode];
   $("#raceNote").textContent = {
-    balance: "Each line is one planker's running balance. Above the line is in the black; below it is in the red. Hover a line, or click a name in the ledger to follow someone.",
-    cumulative: "Total seconds planked against the 180-a-day pace line (dashed). Finish line is 32,400 seconds on March 20.",
-    rolling: "Average seconds per day over the trailing week. Above the 3:00 line means a strong week.",
+    balance: "Each line is one planker's running balance. Above the line is in the black; below it, a little catching up to do. Hover a line, or click a name in the ledger to follow someone.",
+    cumulative: "Total seconds planked alongside the 3-minute-a-day pace line (dashed). The finish line is 32,400 seconds on March 20.",
+    rolling: "Average seconds per day over the past week. Ups and downs are normal; the 3:00 line is the daily goal.",
   }[mode];
 }
 
 function renderHeat() {
   const { M, D, sel } = state;
-  const S = M.names.map(n => statsAt(M.P[n], D)).sort((a, b) => b.balance - a.balance);
+  const S = M.names.map(n => statsAt(M.P[n], D));
   const shown = Math.min(CFG.days, Math.max(D + 1, state.maxD + 1));
   const H = $("#heat");
   let html = `<div class="heat" style="grid-template-columns:auto repeat(${shown},13px)"><div></div>`;
@@ -408,7 +408,7 @@ function renderClock() {
 function renderWeekly() {
   const { M, D } = state;
   const nW = Math.floor(D / 7) + 1;
-  const S = M.names.map(n => statsAt(M.P[n], D)).sort((a, b) => b.balance - a.balance);
+  const S = M.names.map(n => statsAt(M.P[n], D));
   let html = `<table class="wk"><thead><tr><th></th>`;
   for (let w = 0; w < nW; w++) html += `<th>${fmtDate(w * 7)}${w === nW - 1 && (D % 7) !== 6 ? "*" : ""}</th>`;
   html += `</tr></thead><tbody>`;
@@ -437,19 +437,18 @@ function renderProfile() {
   const p = M.P[name], s = statsAt(p, D);
   const es = p.entries.filter(e => e.idx <= D);
   const longest = es.reduce((a, e) => Math.max(a, e.sec), 0);
-  const rank = M.names.map(n => statsAt(M.P[n], D)).sort((a, b) => b.balance - a.balance).findIndex(x => x.name === name) + 1;
   const w = Math.min(14, D + 1), recent = (p.cum[D] - (D - w >= 0 ? p.cum[D - w] : 0)) / w;
   let proj;
   if (s.total >= CFG.goal) proj = `${esc(name)} has already crossed the 32,400-second finish line. 🎉`;
-  else if (recent <= 0) proj = `No planks in the last ${w} days. The finish line is ${num(CFG.goal - s.total)} seconds away.`;
+  else if (recent <= 0) proj = `No planks logged in the last ${w} days. Whenever you're ready, every plank moves you closer: ${num(CFG.goal - s.total)} seconds to the finish line.`;
   else {
     const daysNeeded = Math.ceil((CFG.goal - s.total) / recent), fin = D + daysNeeded;
-    proj = `At the recent pace of ${mmss(recent)}/day, ${esc(name)} ${fin <= CFG.days - 1 ? `crosses the finish line on <b>${fmtDateLong(fin)}</b>` : `finishes ${num(fin - CFG.days + 1)} days after the spring equinox. To finish on time: ${mmss((CFG.goal - s.total) / Math.max(1, CFG.days - 1 - D))}/day`}.`;
+    proj = `At the recent pace of ${mmss(recent)}/day, ${esc(name)} ${fin <= CFG.days - 1 ? `crosses the finish line on <b>${fmtDateLong(fin)}</b>` : `is on track to finish ${num(fin - CFG.days + 1)} days after the spring equinox. About ${mmss((CFG.goal - s.total) / Math.max(1, CFG.days - 1 - D))}/day would land it right on March 20`}.`;
   }
   $("#profile").innerHTML = `
     <div class="prof-top">
       <div class="stat"><div class="lab">Balance</div><div class="val ${s.balance < 0 ? "red" : ""}">${bal(s.balance)}</div></div>
-      <div class="stat"><div class="lab">Rank</div><div class="val">${rank}<small style="font-size:12px;color:var(--muted)"> / ${M.names.length}</small></div></div>
+      <div class="stat"><div class="lab">Avg / day</div><div class="val">${mmss(s.total / (D + 1))}</div></div>
       <div class="stat"><div class="lab">Total</div><div class="val">${hrs(s.total)} h</div></div>
       <div class="stat"><div class="lab">Days in black</div><div class="val">${s.black}</div></div>
       <div class="stat"><div class="lab">Streak · best</div><div class="val">${s.streak} · ${s.best}</div></div>

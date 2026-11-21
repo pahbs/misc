@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Equinox Plank Ledger</title>
-<meta name="description" content="Group planking challenge dashboard: who's in the black, who's in the red.">
+<meta name="description" content="Our group plank challenge: planking together, 3 minutes a day.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231b1a17'/><rect x='5' y='17' width='22' height='4' rx='2' fill='%23f6f1e7'/><circle cx='24' cy='12' r='3' fill='%23b3261e'/></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -13,7 +13,7 @@
   <div class="wrap">
     <p class="eyebrow">General ledger · Core division</p>
     <h1>The Equinox Plank Ledger</h1>
-    <p class="sub" id="sub">Fall equinox → spring equinox · 180 seconds a day · stay in the black</p>
+    <p class="sub" id="sub">Fall equinox → spring equinox · 3 minutes a day · planking together</p>
     <div class="source" id="source">Loading…</div>
   </div>
 </header>
@@ -33,25 +33,25 @@
   <section class="grid-2">
     <div class="card">
       <div class="card-head">
-        <h2>The Ledger</h2>
+        <h2>Everyone's ledger</h2>
         <div class="seg" id="sortSeg">
-          <button data-sort="balance" class="on">Balance</button>
+          <button data-sort="name" class="on">A–Z</button>
+          <button data-sort="balance">Balance</button>
           <button data-sort="total">Total</button>
           <button data-sort="streak">Streak</button>
-          <button data-sort="name">A–Z</button>
         </div>
       </div>
-      <p class="note">Balance = seconds planked minus 180 × days elapsed. <b class="ink">Black</b> means at or ahead of pace; <b class="red">(red)</b> means behind.</p>
+      <p class="note">Balance = seconds planked minus 180 × days elapsed. <b class="ink">Black</b> means at or ahead of the 3-minute pace; <b class="red">(red)</b> is how many seconds to catch up. Every plank counts.</p>
       <div class="ledger" id="ledger"></div>
     </div>
 
     <div class="col">
       <div class="card split">
-        <h2>Black vs. red</h2>
+        <h2>Where the group stands</h2>
         <div id="donut"></div>
       </div>
       <div class="card">
-        <h2>Honors</h2>
+        <h2>Shout-outs</h2>
         <div class="awards" id="awards"></div>
       </div>
     </div>
@@ -59,14 +59,14 @@
 
   <section class="card">
     <div class="card-head">
-      <h2 id="raceTitle">The balance race</h2>
+      <h2 id="raceTitle">Balances over time</h2>
       <div class="seg" id="raceSeg">
         <button data-mode="balance" class="on">Balance</button>
         <button data-mode="cumulative">Cumulative</button>
-        <button data-mode="rolling">7-day avg</button>
+        <button data-mode="rolling">Recent rhythm</button>
       </div>
     </div>
-    <p class="note" id="raceNote">Each line is one planker. Above zero is in the black. Hover a line, or click a name in the ledger to follow someone.</p>
+    <p class="note" id="raceNote">Each line is one planker. Hover a line, or click a name in the ledger to follow someone.</p>
     <div class="chart" id="race"></div>
   </section>
 
@@ -81,7 +81,7 @@
         <span><i class="sw sw-none"></i>none</span>
       </div>
     </div>
-    <p class="note">Every planker, every day. A black square means that day hit the 3-minute minimum.</p>
+    <p class="note">Every planker, every day. A black square means that day reached 3 minutes; any square with color means someone showed up.</p>
     <div class="heat-wrap"><div id="heat"></div></div>
   </section>
 
@@ -106,7 +106,7 @@
 
   <section class="card" id="profileCard">
     <div class="card-head">
-      <h2>Personal account</h2>
+      <h2>Your account</h2>
       <select id="who" aria-label="Choose a planker"></select>
     </div>
     <div id="profile"></div>

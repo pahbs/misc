@@ -65,7 +65,7 @@ h1{font-size:clamp(30px,5vw,52px);line-height:1.02}
 
 /* Ledger */
 .ledger{font-variant-numeric:tabular-nums}
-.lrow{display:grid;grid-template-columns:26px minmax(72px,1fr) 2.2fr 86px 52px;align-items:center;gap:10px;padding:6px 6px;border-bottom:1px solid var(--rule);cursor:pointer;border-radius:6px;transition:background .15s}
+.lrow{display:grid;grid-template-columns:minmax(72px,1fr) 2.2fr 86px 60px;align-items:center;gap:10px;padding:6px 6px;border-bottom:1px solid var(--rule);cursor:pointer;border-radius:6px;transition:background .15s}
 .lrow:hover{background:var(--paper)}
 .lrow.sel{background:var(--paper-2)}
 .lrow.head{cursor:default;font:600 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--ink)}
@@ -81,7 +81,7 @@ h1{font-size:clamp(30px,5vw,52px);line-height:1.02}
 .div-bar .b{position:absolute;top:2px;height:10px;border-radius:2px;transition:all .25s}
 .div-bar .b.pos{background:var(--ink)} .div-bar .b.neg{background:var(--red)}
 .ledger-zero{border-bottom:2px solid var(--ink)!important}
-@media (max-width:560px){.lrow{grid-template-columns:22px 1fr 1.4fr 74px}.lrow .stk{display:none}}
+@media (max-width:560px){.lrow{grid-template-columns:1fr 1.4fr 74px}.lrow .stk{display:none}}
 
 /* Donut */
 .split{display:block}

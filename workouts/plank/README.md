@@ -1,16 +1,16 @@
 # Equinox Plank Ledger
 
-An interactive dashboard for the group plank challenge: fall equinox (Sept 22, 2026) to spring equinox (Mar 20, 2027), 180 seconds a day.
+An interactive dashboard for our plank support group: fall equinox (Sept 22, 2026) to spring equinox (Mar 20, 2027), 180 seconds a day.
 
 **In the black / in the red:** each planker's balance is total seconds planked minus 180 × days elapsed. At or above zero is in the black. Below zero is in the red and is shown in accounting parentheses, like `(1,835)`.
 
 ## What's on the page
 
 - **Replay slider:** rewind the books to any day, or press Replay to watch the whole challenge play out. Every view follows the selected day.
-- **The Ledger:** standings with a diverging bar, the bottom line between black and red, and current streaks. Click a name to follow that person everywhere.
-- **Balance race:** everyone's running balance, cumulative total against the pace line, or 7-day average form. Lines turn red when they drop below the line.
+- **Everyone's ledger:** each person's balance and current streak, alphabetical by default. Sort by balance to see the line between black and red. Click a name to follow that person everywhere.
+- **Balances over time:** everyone's running balance, total against the pace line, or recent rhythm (7-day average). Lines turn red below the line.
 - **Daily books:** a heatmap of every planker × every day.
-- **Group volume, When we plank, Weekly statements, Personal account** (with a finish-line projection), **Honors**, and **Chatter**.
+- **Group volume, When we plank, Weekly statements, Your account** (with a finish-line projection), **Shout-outs**, and **Chatter**.
 
 ## Data
 
