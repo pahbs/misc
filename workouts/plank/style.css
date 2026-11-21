@@ -151,3 +151,9 @@ select{font:500 14px var(--sans);padding:7px 30px 7px 12px;border-radius:999px;b
 .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:7px 9px;border-radius:7px;opacity:0;transition:opacity .1s;z-index:10;max-width:260px;line-height:1.35;font-variant-numeric:tabular-nums}
 .tip b{color:#fff}
 .tip .neg{color:#ff9d93}
+
+/* Where the group stands — full-width at top */
+.stands #donut .lg{display:grid;grid-template-columns:repeat(4,1fr);gap:0 28px}
+.stands #donut .lg div{flex-direction:column;justify-content:flex-start;border-bottom:0;border-left:1px solid var(--rule);padding:4px 0 4px 14px}
+.stands #donut .lg b,.stands #donut .lg span+span{font:700 24px/1.2 var(--serif)}
+@media (max-width:700px){.stands #donut .lg{grid-template-columns:1fr 1fr;gap:10px 16px}}
