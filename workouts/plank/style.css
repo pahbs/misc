@@ -4,7 +4,7 @@
   --red:#b3261e; --red-soft:#e9b3ad; --red-faint:#f6e2df;
   --blk1:#7d776b; --blk2:#45413a; --blk3:#1b1a17;
   --gold:#a9832f;
-  --serif: "Fraunces","Iowan Old Style",Georgia,serif;
+  --serif: "Plus Jakarta Sans","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   --sans: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono: "JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
@@ -14,12 +14,12 @@ body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans)
   background-image:repeating-linear-gradient(transparent 0 27px, rgba(160,140,100,.07) 27px 28px);}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
 a{color:var(--ink)}
-h1,h2{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;margin:0}
+h1,h2{font-family:var(--serif);font-weight:700;letter-spacing:-.02em;margin:0}
 h2{font-size:21px}
 .masthead{border-bottom:3px double var(--ink);padding:36px 0 22px;margin-bottom:22px;background:linear-gradient(var(--paper),rgba(246,241,231,.6))}
 .eyebrow{font:600 11px/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
 h1{font-size:clamp(30px,5vw,52px);line-height:1.02}
-.sub{font-family:var(--serif);font-style:italic;color:var(--ink-2);margin:8px 0 0;font-size:17px}
+.sub{font-family:var(--sans);color:var(--ink-2);margin:8px 0 0;font-size:16px}
 .source{margin-top:12px;font-size:12px;color:var(--muted)}
 .source .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px}
 .source .dot.live{background:#2f7d4a;box-shadow:0 0 0 3px rgba(47,125,74,.15)}
@@ -138,14 +138,14 @@ svg text{font-family:var(--sans);fill:var(--muted);font-size:11px}
 .stat .lab{font:600 10px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .stat .val{font:600 20px var(--serif);font-variant-numeric:tabular-nums}
 select{font:500 14px var(--sans);padding:7px 30px 7px 12px;border-radius:999px;border:1px solid var(--rule-2);background:var(--card);color:var(--ink)}
-.proj{font-family:var(--serif);font-size:16px;margin:8px 0 0;color:var(--ink-2)}
+.proj{font-family:var(--sans);font-size:15px;margin:8px 0 0;color:var(--ink-2)}
 
 /* Chatter */
 .chatter{columns:3 260px;column-gap:16px;margin-top:10px}
 .msg{break-inside:avoid;background:var(--paper);border-radius:10px;padding:10px 12px;margin-bottom:12px;border-left:3px solid var(--ink)}
 .msg .who{font-weight:600;font-size:13px}
 .msg .when{font-size:11px;color:var(--muted);margin-left:6px}
-.msg .txt{font-family:var(--serif);font-size:15px;margin-top:2px;white-space:pre-wrap;word-wrap:break-word}
+.msg .txt{font-family:var(--sans);font-size:14.5px;margin-top:2px;white-space:pre-wrap;word-wrap:break-word}
 
 .foot{color:var(--muted);font-size:12px;padding:10px 0 40px;text-align:center}
 .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:7px 9px;border-radius:7px;opacity:0;transition:opacity .1s;z-index:10;max-width:260px;line-height:1.35;font-variant-numeric:tabular-nums}
