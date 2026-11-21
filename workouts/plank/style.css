@@ -37,12 +37,12 @@ h1{font-size:clamp(30px,5vw,52px);line-height:1.02}
 /* KPIs */
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
 @media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi:last-child{grid-column:1/-1}}
-.kpi{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+.kpi{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:11px 14px}
 .kpi .lab{font:600 10.5px/1.2 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.kpi .val{font:600 28px/1.15 var(--serif);margin-top:6px;font-variant-numeric:tabular-nums}
+.kpi .val{font:600 26px/1.1 var(--serif);margin-top:4px;font-variant-numeric:tabular-nums}
 .kpi .val small{font-size:14px;color:var(--muted);font-weight:400}
-.kpi .foot{font-size:12px;color:var(--muted);margin-top:4px}
-.bar{height:6px;background:var(--paper-2);border-radius:3px;overflow:hidden;margin-top:8px}
+.kpi .foot{font-size:12px;color:var(--muted);margin-top:4px;padding:0;text-align:left}
+.bar{height:5px;background:var(--paper-2);border-radius:3px;overflow:hidden;margin-top:6px}
 .bar>i{display:block;height:100%;background:var(--ink);border-radius:3px}
 
 /* Scrubber */
