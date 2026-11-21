@@ -157,7 +157,14 @@ function sortStats(S) {
   return [...S].sort(by);
 }
 
+const LEDGER_NOTES = {
+  name: 'Everyone, alphabetically. <b class="ink">Balance</b> is seconds planked minus 3 minutes for every day so far: <b class="ink">black</b> is at or ahead of pace, <b class="red">(red)</b> is seconds to catch up. <b class="ink">Streak</b> is days in a row at 3:00+.',
+  balance: 'Sorted by balance: seconds planked minus 3 minutes for every day so far. Everyone above the dark line is in the <b class="ink">black</b>; below it, <b class="red">(red)</b> shows seconds to catch up. Since the pace is the same for everyone, this is also the order by total time planked.',
+  consistency: 'Sorted by consistency: the number of days each person reached 3:00 or more, regardless of how long they went. Steady daily planks count more here than a few long ones.',
+  streak: 'Sorted by current streak: days in a row at 3:00+, up to the day shown. Today doesn\'t break a streak until the day is over.',
+};
 function renderLedger(S) {
+  $("#ledgerNote").innerHTML = LEDGER_NOTES[state.sort];
   const rows = sortStats(S);
   const maxAbs = Math.max(1, ...rows.map(s => Math.abs(s.balance)));
   let html = `<div class="lrow head"><span>Planker</span><span>± Pace</span><span class="amt">Balance</span><span class="stk">Streak</span></div>`;
