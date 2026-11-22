@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../workouts/plank/style.css?v=2026112201">
-<link rel="stylesheet" href="monitor.css?v=2026112201">
+<link rel="stylesheet" href="../workouts/plank/style.css?v=2026112202">
+<link rel="stylesheet" href="monitor.css?v=2026112202">
 </head>
 <body>
 <header class="masthead">
@@ -19,6 +19,7 @@
     <h1>Site monitor</h1>
     <p class="sub">Unique visitors to my pages, from GoatCounter.</p>
     <div class="source" id="source">Not connected</div>
+    <label class="chk top-chk"><input type="checkbox" id="skipMe"> Don't count my visits on this browser</label>
   </div>
 </header>
 
@@ -32,6 +33,7 @@
       <button class="btn" type="submit">Connect</button>
     </form>
     <p class="err" id="keyErr" hidden></p>
+    <div class="diag" id="diag" hidden></div>
     <p class="note small">Create a key at <a href="https://pahbs.goatcounter.com/user/api" target="_blank" rel="noopener">pahbs.goatcounter.com → your name → API</a>.</p>
   </section>
 
@@ -45,7 +47,6 @@
         <button data-days="365">1 year</button>
       </div>
       <div class="tools">
-        <label class="chk"><input type="checkbox" id="skipMe"> Don't count my visits on this browser</label>
         <button class="btn ghost" id="refresh">Refresh</button>
         <button class="btn ghost" id="forget">Forget key</button>
       </div>
@@ -73,6 +74,6 @@
   </div>
 </main>
 <div class="tip" id="tip" role="tooltip"></div>
-<script src="monitor.js?v=2026112201"></script>
+<script src="monitor.js?v=2026112202"></script>
 </body>
 </html>

@@ -51,7 +51,7 @@ async function api(path, params = {}) {
     if (v == null) continue;
     if (Array.isArray(v)) v.forEach(x => qs.append(k, x)); else qs.append(k, v);
   }
-  const r = await fetch(`${API}${path}?${qs}`, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+  const r = await fetch(`${API}${path}?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
   if (r.status === 401 || r.status === 403) { const e = new Error("That key was rejected. Check that it has read-statistics permission."); e.auth = true; throw e; }
   if (r.status === 429) throw new Error("GoatCounter's rate limit was hit. Wait a few seconds and refresh.");
   if (!r.ok) throw new Error(`GoatCounter returned ${r.status}`);
@@ -153,7 +153,7 @@ async function load() {
       api("/stats/browsers", { ...r, limit: 6, ...inc }),
     ]);
     if (my !== loading) return;
-    $("#lock").hidden = true; $("#dash").hidden = false;
+    $("#lock").hidden = true; $("#dash").hidden = false; $("#diag").hidden = true;
     renderKPIs(total, prevTotal, hits); renderTrend(total); renderPages(hits);
     renderList("toprefs", refs, "toprefs"); renderList("locations", locs); renderList("systems", sys); renderList("browsers", brs);
     const t = new Date();
@@ -162,13 +162,25 @@ async function load() {
   } catch (e) {
     if (my !== loading) return;
     if (e.auth) { store.set(KEY, null); showLock(e.message); return; }
-    $("#source").innerHTML = `<span class="dot"></span>${esc(e.message === "Failed to fetch" ? "Couldn't reach GoatCounter. Check your connection and refresh." : e.message)}`;
+    if (e instanceof TypeError) return diagnose();
+    $("#source").innerHTML = `<span class="dot"></span>${esc(e.message)}`;
   }
+}
+// The browser blocked the request. Work out whether it's a content blocker or the API itself.
+async function diagnose() {
+  let blocked = false;
+  try { await fetch("https://gc.zgo.at/count.js", { mode: "no-cors", cache: "no-store" }); } catch { blocked = true; }
+  showLock();
+  const d = $("#diag"); d.hidden = false;
+  $("#source").innerHTML = `<span class="dot"></span>Couldn't reach GoatCounter`;
+  d.innerHTML = blocked
+    ? `<b>This browser is blocking GoatCounter.</b> An ad or tracker blocker is the usual cause. For example: Brave Shields, Safari content blockers, uBlock Origin, Firefox's strict tracking protection, or Private Relay. Allow <code>goatcounter.com</code> and <code>gc.zgo.at</code> on <code>pahbs.github.io</code>, then reconnect. The same blocker also stops visits from being counted for anyone who uses it.`
+    : `<b>GoatCounter refused the request from this page.</b> The connection works, but its API didn't allow a browser request from pahbs.github.io. Your key is still saved in this browser. You can use <a href="${SITE}" target="_blank" rel="noopener">GoatCounter's own dashboard</a> for now.`;
 }
 function showLock(msg) {
   $("#dash").hidden = true; $("#lock").hidden = false;
   $("#source").innerHTML = `<span class="dot"></span>Not connected`;
-  $("#keyErr").hidden = !msg; $("#keyErr").textContent = msg || "";
+  $("#keyErr").hidden = !msg; $("#keyErr").textContent = msg || ""; $("#diag").hidden = true;
   $("#keyInput").value = ""; $("#keyInput").focus();
 }
 

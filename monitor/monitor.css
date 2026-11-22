@@ -36,3 +36,7 @@
 .bi span{position:relative;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bi b{position:relative;z-index:1;font-variant-numeric:tabular-nums}
 .empty{color:var(--muted);font-size:13px;padding:6px 0}
+.top-chk{margin-top:10px}
+.diag{background:var(--red-faint);border-radius:10px;padding:12px 14px;font-size:13.5px;margin:10px 0}
+.diag b{color:var(--red)}
+.diag ul{margin:6px 0 0;padding-left:18px}
