@@ -118,8 +118,27 @@ function render() {
   renderList("toprefs", R.toprefs, "toprefs"); renderList("locations", R.locations); renderList("systems", R.systems); renderList("browsers", R.browsers);
   renderMap(R.map);
 
-  const g = new Date(D.generated_at);
-  $("#source").innerHTML = `<span class="dot live"></span>Unlocked · stats as of ${g.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+  renderSource();
+}
+
+// "Last checked" comes from the workflow's latest successful run: the stats file is only rewritten when the numbers change.
+const fmtWhen = d => d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+let lastChecked = null;
+function renderSource() {
+  if (!state.data) return;
+  const changed = new Date(state.data.generated_at);
+  const checked = lastChecked && lastChecked > changed ? lastChecked : changed;
+  const same = Math.abs(checked - changed) < 60e3;
+  $("#source").innerHTML = `<span class="dot live"></span>Unlocked · last checked ${fmtWhen(checked)}` +
+    (same ? "" : ` · numbers last changed ${fmtWhen(changed)}`);
+}
+async function fetchLastChecked() {
+  try {
+    const r = await fetch("https://api.github.com/repos/pahbs/misc/actions/workflows/monitor.yml/runs?status=success&per_page=1", { cache: "no-store" });
+    if (!r.ok) return;
+    const run = (await r.json()).workflow_runs?.[0];
+    if (run) { lastChecked = new Date(run.updated_at); renderSource(); }
+  } catch { /* offline or rate-limited: keep showing the stats time */ }
 }
 
 function renderTrend(series, pathName) {
@@ -228,6 +247,7 @@ async function unlock(pass) {
   store.set(PASS_KEY, pass);
   $("#lock").hidden = true; $("#dash").hidden = false;
   render();
+  fetchLastChecked();
 }
 
 function wire() {
