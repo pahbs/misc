@@ -1,9 +1,11 @@
-/* Site monitor: reads GoatCounter's API with a key kept in this browser only. */
+/* Site monitor: decrypts GoatCounter stats that a GitHub Action saves to the repo. */
 (() => {
 "use strict";
-const SITE = "https://pahbs.goatcounter.com";
-const API = SITE + "/api/v0";
-const KEY = "monitor.gc.token";
+const SOURCES = [
+  "https://raw.githubusercontent.com/pahbs/misc/main/monitor/data/stats.enc.json", // freshest, right after the Action commits
+  "data/stats.enc.json",                                                           // GitHub Pages copy
+];
+const PASS_KEY = "monitor.pass";
 
 const $ = s => document.querySelector(s);
 const NS = "http://www.w3.org/2000/svg";
@@ -11,15 +13,19 @@ const num = n => Math.round(n).toLocaleString("en-US");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const fmtDay = s => { const [y, m, d] = s.split("-").map(Number); return `${MON[m - 1]} ${d}`; };
-const fmtDayLong = s => { const [y, m, d] = s.split("-").map(Number); const dt = new Date(Date.UTC(y, m - 1, d)); return `${DOW[dt.getUTCDay()]}, ${MON[m - 1]} ${d}`; };
+const parseDay = s => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const isoDay = d => d.toISOString().slice(0, 10);
+const fmtDay = s => { const d = parseDay(s); return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; };
+const fmtDayLong = s => { const d = parseDay(s); return `${DOW[d.getUTCDay()]}, ${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; };
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
 };
-const state = { days: 30, path: null, pathName: null };
+store.set("monitor.gc.token", null); // key from the earlier version of this page; no longer used
 
-// tooltip
+const state = { days: 30, path: null, data: null };
+
+// ---------- tooltip / svg ----------
 const tip = $("#tip");
 function showTip(e, html) {
   tip.innerHTML = html; tip.style.opacity = 1;
@@ -37,173 +43,164 @@ function el(tag, attrs = {}, parent) {
   return e;
 }
 
-// ---------- API ----------
-function hourISO(d) { const x = new Date(d); x.setUTCMinutes(0, 0, 0); return x.toISOString().replace(".000", ""); }
-function range(days, back = 0) {
-  const end = new Date(Date.now() + 3600e3 - back * days * 864e5);
-  const start = new Date(end.getTime() - days * 864e5);
-  return { start: hourISO(start), end: hourISO(end) };
-}
-async function api(path, params = {}) {
-  const token = store.get(KEY);
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v == null) continue;
-    if (Array.isArray(v)) v.forEach(x => qs.append(k, x)); else qs.append(k, v);
+// ---------- data ----------
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function fetchBlob() {
+  let missing = false;
+  for (const url of SOURCES) {
+    try {
+      const r = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
+      if (r.ok) return await r.json();
+      if (r.status === 404) missing = true;
+    } catch { /* try the next source */ }
   }
-  const r = await fetch(`${API}${path}?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
-  if (r.status === 401 || r.status === 403) { const e = new Error("That key was rejected. Check that it has read-statistics permission."); e.auth = true; throw e; }
-  if (r.status === 429) throw new Error("GoatCounter's rate limit was hit. Wait a few seconds and refresh.");
-  if (!r.ok) throw new Error(`GoatCounter returned ${r.status}`);
-  return r.json();
+  const e = new Error("no stats"); e.code = missing ? "missing" : "unreachable"; throw e;
+}
+async function decrypt(blob, pass) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: b64(blob.salt), iterations: blob.iter },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(blob.iv) }, key, b64(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
 }
 
-// ---------- Rendering ----------
-function renderKPIs(total, prevTotal, hits) {
-  const days = (total.stats || []).filter(s => s.day);
-  const today = days.length ? days[days.length - 1] : null;
-  const busiest = days.reduce((m, s) => (s.daily || 0) > (m?.daily || 0) ? s : m, null);
-  const change = prevTotal.total ? Math.round((total.total - prevTotal.total) / prevTotal.total * 100) : null;
-  const top = (hits.hits || []).filter(h => !h.event)[0];
+// The last N days (ISO dates), ending on the newest day in the data; back=1 is the N days before that.
+function dayWindow(days, back = 0) {
+  const D = state.data;
+  const last = D.daily.length ? parseDay(D.daily[D.daily.length - 1].day) : parseDay(D.generated_at.slice(0, 10));
+  const out = [];
+  for (let i = days * (back + 1) - 1; i >= days * back; i--) out.push(isoDay(new Date(last.getTime() - i * 864e5)));
+  return out;
+}
+
+// ---------- rendering ----------
+function render() {
+  const D = state.data, days = state.days, R = D.ranges[String(days)] || {};
+  const dayList = dayWindow(days);
+  const path = state.path != null ? D.paths.find(p => p.id === state.path) : null;
+  const pathName = path ? (path.title || path.path) : null;
+  const siteDaily = new Map(D.daily.map(s => [s.day, s.n]));
+  const series = dayList.map(d => ({ day: d, n: path ? (path.daily[d] || 0) : (siteDaily.get(d) || 0) }));
+
+  // KPIs
+  let total = R.total ?? series.reduce((a, s) => a + s.n, 0), prev = R.prev;
+  if (path) {
+    total = series.reduce((a, s) => a + s.n, 0);
+    prev = days <= 182 ? dayWindow(days, 1).reduce((a, d) => a + (path.daily[d] || 0), 0) : null;
+  }
+  const change = prev ? Math.round((total - prev) / prev * 100) : null;
+  const latest = series[series.length - 1];
+  const busiest = series.reduce((m, s) => s.n > (m?.n || 0) ? s : m, null);
+  const pages = D.paths.map(p => ({ ...p, n: dayList.reduce((a, d) => a + (p.daily[d] || 0), 0) })).sort((a, b) => b.n - a.n);
+  const top = pages.find(p => p.n > 0);
   $("#kpis").innerHTML = `
-    <div class="kpi"><div class="lab">Unique visitors · ${state.days} days</div><div class="val">${num(total.total || 0)}</div>
-      <div class="foot">${change == null ? "No earlier data to compare" : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs. the ${state.days} days before`}</div></div>
-    <div class="kpi"><div class="lab">Today</div><div class="val">${num(today?.daily || 0)}</div><div class="foot">${today ? fmtDayLong(today.day) : ""}</div></div>
-    <div class="kpi"><div class="lab">Busiest day</div><div class="val">${num(busiest?.daily || 0)}</div><div class="foot">${busiest && busiest.daily ? fmtDayLong(busiest.day) : "No visits yet"}</div></div>
-    <div class="kpi"><div class="lab">${state.path ? "Filtered to" : "Top page"}</div><div class="val sm">${esc(state.path ? state.pathName : (top ? (top.title || top.path) : "—"))}</div>
-      <div class="foot">${state.path ? `<span class="filter-pill" id="clearFilter">✕ Show all pages</span>` : top ? `${num(top.count)} visitors · ${esc(top.path)}` : ""}</div></div>`;
-  const cf = $("#clearFilter"); if (cf) cf.onclick = () => { state.path = null; state.pathName = null; load(); };
+    <div class="kpi"><div class="lab">Unique visitors · ${days} days</div><div class="val">${num(total)}</div>
+      <div class="foot">${change == null ? "No earlier data to compare" : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs. the ${days} days before`}</div></div>
+    <div class="kpi"><div class="lab">Latest day</div><div class="val">${num(latest?.n || 0)}</div><div class="foot">${latest ? fmtDayLong(latest.day) : ""}</div></div>
+    <div class="kpi"><div class="lab">Busiest day</div><div class="val">${num(busiest?.n || 0)}</div><div class="foot">${busiest ? fmtDayLong(busiest.day) : "No visits yet"}</div></div>
+    <div class="kpi"><div class="lab">${path ? "Filtered to" : "Top page"}</div><div class="val sm">${esc(path ? pathName : (top ? (top.title || top.path) : "—"))}</div>
+      <div class="foot">${path ? `<span class="filter-pill" id="clearFilter">✕ Show all pages</span>` : top ? `${num(top.n)} visitors · ${esc(top.path)}` : ""}</div></div>`;
+  const cf = $("#clearFilter"); if (cf) cf.onclick = () => { state.path = null; render(); };
+
+  renderTrend(series, pathName);
+
+  const shown = pages.filter(p => p.n > 0);
+  $("#pages").innerHTML = !shown.length ? `<p class="empty">No page visits in this period yet.</p>` :
+    `<div class="prow head"><span>Page</span><span>Daily visitors</span><span style="text-align:right">Visitors</span></div>` +
+    shown.map(p => `<div class="prow${state.path === p.id ? " sel" : ""}" data-id="${p.id}">
+      <div><div class="t">${esc(p.title || p.path)}</div><div class="p">${esc(p.path)}</div></div>
+      <div>${spark(dayList.map(d => p.daily[d] || 0))}</div><div class="n">${num(p.n)}</div></div>`).join("");
+  document.querySelectorAll(".prow[data-id]").forEach(r => r.onclick = () => {
+    const id = +r.dataset.id; state.path = state.path === id ? null : id; render();
+  });
+
+  $("#listNote").textContent = path ? "These lists are for all pages." : "";
+  renderList("toprefs", R.toprefs, "toprefs"); renderList("locations", R.locations); renderList("systems", R.systems); renderList("browsers", R.browsers);
+
+  const g = new Date(D.generated_at);
+  $("#source").innerHTML = `<span class="dot live"></span>Unlocked · stats as of ${g.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
 }
 
-function renderTrend(total) {
-  const days = (total.stats || []).filter(s => s.day);
+function renderTrend(series, pathName) {
   const box = $("#trend"), W = Math.max(300, box.clientWidth), H = 220, m = { l: 34, r: 8, t: 10, b: 24 };
   box.innerHTML = "";
-  $("#trendTitle").textContent = state.path ? `Unique visitors per day · ${state.pathName}` : "Unique visitors per day";
-  $("#trendNote").textContent = days.length ? `${fmtDay(days[0].day)} – ${fmtDay(days[days.length - 1].day)}` : "";
-  if (!days.length) { box.innerHTML = `<p class="empty">No visits in this period yet.</p>`; return; }
-  const max = Math.max(4, ...days.map(s => s.daily || 0));
+  $("#trendTitle").textContent = pathName ? `Unique visitors per day · ${pathName}` : "Unique visitors per day";
+  $("#trendNote").textContent = series.length ? `${fmtDay(series[0].day)} – ${fmtDay(series[series.length - 1].day)}` : "";
+  const max = Math.max(4, ...series.map(s => s.n));
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H }, box);
   const y = v => H - m.b - v / max * (H - m.t - m.b);
-  const bw = (W - m.l - m.r) / days.length;
+  const bw = (W - m.l - m.r) / series.length;
   const step = Math.max(1, Math.ceil(max / 4));
   for (let t = 0; t <= max; t += step) {
     el("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: "var(--rule)", "stroke-dasharray": "2 3" }, svg);
     el("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }, svg).textContent = num(t);
   }
-  days.forEach((s, i) => {
-    const v = s.daily || 0;
-    const r = el("rect", { x: m.l + i * bw + bw * .14, y: v ? y(v) : H - m.b - 1.5, width: Math.max(1, bw * .72), height: v ? H - m.b - y(v) : 1.5, rx: Math.min(3, bw / 4), fill: i === days.length - 1 ? "var(--gold)" : "var(--ink)", opacity: v ? .88 : .25 }, svg);
-    r.addEventListener("mousemove", e => showTip(e, `<b>${fmtDayLong(s.day)}</b><br>${num(v)} unique visitor${v === 1 ? "" : "s"}`));
+  series.forEach((s, i) => {
+    const r = el("rect", { x: m.l + i * bw + bw * .14, y: s.n ? y(s.n) : H - m.b - 1.5, width: Math.max(1, bw * .72), height: s.n ? H - m.b - y(s.n) : 1.5,
+      rx: Math.min(3, bw / 4), fill: i === series.length - 1 ? "var(--gold)" : "var(--ink)", opacity: s.n ? .88 : .25 }, svg);
+    r.addEventListener("mousemove", e => showTip(e, `<b>${fmtDayLong(s.day)}</b><br>${num(s.n)} unique visitor${s.n === 1 ? "" : "s"}`));
     r.addEventListener("mouseleave", hideTip);
   });
-  const every = Math.max(1, Math.ceil(days.length / (W < 500 ? 5 : 9)));
-  days.forEach((s, i) => { if (i % every === 0) el("text", { x: m.l + i * bw + bw / 2, y: H - 6, "text-anchor": "middle" }, svg).textContent = fmtDay(s.day); });
+  const every = Math.max(1, Math.ceil(series.length / (W < 500 ? 5 : 9)));
+  series.forEach((s, i) => { if (i % every === 0) el("text", { x: m.l + i * bw + bw / 2, y: H - 6, "text-anchor": "middle" }, svg).textContent = fmtDay(s.day); });
 }
-
-function spark(stats) {
-  const v = (stats || []).map(s => s.daily || 0);
+function spark(v) {
   if (!v.length) return "";
   const max = Math.max(1, ...v), w = 100, h = 30, bw = w / v.length;
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${v.map((x, i) =>
     `<rect x="${(i * bw + bw * .1).toFixed(2)}" y="${(h - (x / max) * h).toFixed(2)}" width="${(bw * .8).toFixed(2)}" height="${((x / max) * h || .8).toFixed(2)}" fill="var(--ink)" opacity="${x ? .8 : .2}"/>`).join("")}</svg>`;
 }
-function renderPages(hits) {
-  const list = (hits.hits || []).filter(h => !h.event);
-  if (!list.length) { $("#pages").innerHTML = `<p class="empty">No page visits recorded in this period yet. Visits start counting once the tracking code is live.</p>`; return; }
-  $("#pages").innerHTML = `<div class="prow head"><span>Page</span><span>Daily visitors</span><span style="text-align:right">Visitors</span></div>` +
-    list.map(h => `<div class="prow${state.path === h.path_id ? " sel" : ""}" data-id="${h.path_id}" data-name="${esc(h.title || h.path)}">
-      <div><div class="t">${esc(h.title || h.path)}</div><div class="p">${esc(h.path)}</div></div>
-      <div>${spark(h.stats)}</div><div class="n">${num(h.count)}</div></div>`).join("");
-  document.querySelectorAll(".prow[data-id]").forEach(r => r.onclick = () => {
-    const id = +r.dataset.id;
-    if (state.path === id) { state.path = null; state.pathName = null; } else { state.path = id; state.pathName = r.dataset.name; }
-    load();
-  });
-}
-
-const REF = { h: "", g: "Generated", c: "Campaign", o: "Other" };
-function renderList(id, data, kind) {
-  const list = (data.stats || []).filter(s => s.count > 0);
-  const elx = $("#" + id);
-  if (!list.length) { elx.innerHTML = `<p class="empty">Nothing yet.</p>`; return; }
-  const max = Math.max(...list.map(s => s.count));
-  elx.innerHTML = list.map(s => {
-    let name = s.name || "(unknown)";
-    if (kind === "toprefs" && !s.name) name = "Direct, or link from an app or text";
-    return `<div class="bi"><i style="width:${(s.count / max * 100).toFixed(1)}%"></i><span title="${esc(name)}">${esc(name)}</span><b>${num(s.count)}</b></div>`;
+function renderList(id, list, kind) {
+  const box = $("#" + id); list = (list || []).filter(s => s.n > 0);
+  if (!list.length) { box.innerHTML = `<p class="empty">Nothing yet.</p>`; return; }
+  const max = Math.max(...list.map(s => s.n));
+  box.innerHTML = list.map(s => {
+    const name = s.name || (kind === "toprefs" ? "Direct, or link from an app or text" : "(unknown)");
+    return `<div class="bi"><i style="width:${(s.n / max * 100).toFixed(1)}%"></i><span title="${esc(name)}">${esc(name)}</span><b>${num(s.n)}</b></div>`;
   }).join("");
 }
 
-// ---------- Flow ----------
-let loading = 0;
-async function load() {
-  const my = ++loading;
-  const r = range(state.days), prev = range(state.days, 1);
-  const inc = state.path ? { include_paths: [state.path] } : {};
-  $("#source").innerHTML = `<span class="dot"></span>Loading…`;
-  try {
-    const [total, prevTotal, hits, refs, locs, sys, brs] = await Promise.all([
-      api("/stats/total", { ...r, ...inc }),
-      api("/stats/total", { ...prev, ...inc }),
-      api("/stats/hits", { ...r, limit: 100 }),
-      api("/stats/toprefs", { ...r, limit: 8, ...inc }),
-      api("/stats/locations", { ...r, limit: 8, ...inc }),
-      api("/stats/systems", { ...r, limit: 6, ...inc }),
-      api("/stats/browsers", { ...r, limit: 6, ...inc }),
-    ]);
-    if (my !== loading) return;
-    $("#lock").hidden = true; $("#dash").hidden = false; $("#diag").hidden = true;
-    renderKPIs(total, prevTotal, hits); renderTrend(total); renderPages(hits);
-    renderList("toprefs", refs, "toprefs"); renderList("locations", locs); renderList("systems", sys); renderList("browsers", brs);
-    const t = new Date();
-    $("#source").innerHTML = `<span class="dot live"></span>Connected to pahbs.goatcounter.com · updated ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-    state.lastTotal = total;
-  } catch (e) {
-    if (my !== loading) return;
-    if (e.auth) { store.set(KEY, null); showLock(e.message); return; }
-    if (e instanceof TypeError) return diagnose();
-    $("#source").innerHTML = `<span class="dot"></span>${esc(e.message)}`;
-  }
-}
-// The browser blocked the request. Work out whether it's a content blocker or the API itself.
-async function diagnose() {
-  let blocked = false;
-  try { await fetch("https://gc.zgo.at/count.js", { mode: "no-cors", cache: "no-store" }); } catch { blocked = true; }
-  showLock();
-  const d = $("#diag"); d.hidden = false;
-  $("#source").innerHTML = `<span class="dot"></span>Couldn't reach GoatCounter`;
-  d.innerHTML = blocked
-    ? `<b>This browser is blocking GoatCounter.</b> An ad or tracker blocker is the usual cause. For example: Brave Shields, Safari content blockers, uBlock Origin, Firefox's strict tracking protection, or Private Relay. Allow <code>goatcounter.com</code> and <code>gc.zgo.at</code> on <code>pahbs.github.io</code>, then reconnect. The same blocker also stops visits from being counted for anyone who uses it.`
-    : `<b>GoatCounter refused the request from this page.</b> The connection works, but its API didn't allow a browser request from pahbs.github.io. Your key is still saved in this browser. You can use <a href="${SITE}" target="_blank" rel="noopener">GoatCounter's own dashboard</a> for now.`;
-}
-function showLock(msg) {
+// ---------- flow ----------
+function showLock(msg, diagHTML) {
   $("#dash").hidden = true; $("#lock").hidden = false;
-  $("#source").innerHTML = `<span class="dot"></span>Not connected`;
-  $("#keyErr").hidden = !msg; $("#keyErr").textContent = msg || ""; $("#diag").hidden = true;
-  $("#keyInput").value = ""; $("#keyInput").focus();
+  $("#source").innerHTML = `<span class="dot"></span>Locked`;
+  $("#keyErr").hidden = !msg; $("#keyErr").textContent = msg || "";
+  $("#diag").hidden = !diagHTML; $("#diag").innerHTML = diagHTML || "";
+  $("#keyInput").value = "";
+}
+const SETUP = `<b>No stats file yet.</b> The GitHub Action that collects the stats hasn't run successfully yet. To set it up:
+  <ul><li>In GitHub, open <b>pahbs/misc → Settings → Secrets and variables → Actions</b>.</li>
+  <li>Add <code>GOATCOUNTER_TOKEN</code> (your GoatCounter key) and <code>MONITOR_PASSPHRASE</code> (a passphrase you make up).</li>
+  <li>Open <a href="https://github.com/pahbs/misc/actions/workflows/monitor.yml" target="_blank" rel="noopener">Actions → Update site monitor</a> and click <b>Run workflow</b>.</li></ul>`;
+
+async function unlock(pass) {
+  $("#source").innerHTML = `<span class="dot"></span>Unlocking…`;
+  let blob;
+  try { blob = await fetchBlob(); }
+  catch (e) { return showLock("", e.code === "missing" ? SETUP : "<b>Couldn't download the stats.</b> Check your connection and reload."); }
+  try { state.data = await decrypt(blob, pass); }
+  catch { store.set(PASS_KEY, null); return showLock("That passphrase didn't unlock the stats. Use the same one you saved as the MONITOR_PASSPHRASE secret."); }
+  store.set(PASS_KEY, pass);
+  $("#lock").hidden = true; $("#dash").hidden = false;
+  render();
 }
 
 function wire() {
-  $("#keyForm").onsubmit = e => {
-    e.preventDefault();
-    const k = $("#keyInput").value.trim(); if (!k) return;
-    store.set(KEY, k); $("#keyErr").hidden = true; load();
-  };
-  $("#forget").onclick = () => { store.set(KEY, null); showLock(); };
-  $("#refresh").onclick = load;
+  $("#keyForm").onsubmit = e => { e.preventDefault(); const k = $("#keyInput").value; if (k) unlock(k); };
+  $("#forget").onclick = () => { store.set(PASS_KEY, null); state.data = null; showLock(); };
   document.querySelectorAll("#rangeSeg button").forEach(b => b.onclick = () => {
     state.days = +b.dataset.days;
     document.querySelectorAll("#rangeSeg button").forEach(x => x.classList.toggle("on", x === b));
-    load();
+    if (state.data) render();
   });
   // GoatCounter's count.js skips counting when localStorage "skipgc" is "t" (same origin as the other pages).
   const skip = $("#skipMe");
   skip.checked = store.get("skipgc") === "t";
   skip.onchange = () => store.set("skipgc", skip.checked ? "t" : null);
-  let rw; addEventListener("resize", () => { clearTimeout(rw); rw = setTimeout(() => state.lastTotal && renderTrend(state.lastTotal), 150); });
+  let rw; addEventListener("resize", () => { clearTimeout(rw); rw = setTimeout(() => state.data && render(), 150); });
 }
 
 wire();
-if (store.get(KEY)) load(); else showLock();
+const saved = store.get(PASS_KEY);
+if (saved) unlock(saved); else showLock();
 })();
