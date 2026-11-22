@@ -49,6 +49,87 @@ def get(path, **params):
     raise RuntimeError(f"Gave up after repeated rate limiting: {path}")
 
 
+def decrypt_previous():
+    """Return the previously saved stats (for the coordinate cache), or {}."""
+    try:
+        with open(OUT) as f:
+            blob = json.load(f)
+        key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=base64.b64decode(blob["salt"]), iterations=blob["iter"]).derive(PASS.encode())
+        return json.loads(AESGCM(key).decrypt(base64.b64decode(blob["iv"]), base64.b64decode(blob["ct"]), None))
+    except Exception:
+        return {}
+
+
+# ---------- coordinates for the map ----------
+UA = {"User-Agent": "pahbs-site-monitor/1.0 (https://github.com/pahbs/misc)"}
+geocache = decrypt_previous().get("geocache", {})
+_countries = None
+
+
+def country_coords(code, name):
+    """Country centroid from the world-countries dataset, else geocode the name."""
+    global _countries
+    if _countries is None:
+        try:
+            req = urllib.request.Request("https://cdn.jsdelivr.net/npm/world-countries/countries.json", headers=UA)
+            with urllib.request.urlopen(req, timeout=60) as r:
+                _countries = {c["cca2"]: c.get("latlng") for c in json.load(r) if c.get("cca2")}
+        except Exception as e:
+            print("Couldn't load country centroids:", e)
+            _countries = {}
+    ll = _countries.get((code or "").upper())
+    return ll if ll and len(ll) == 2 else geocode(name)
+
+
+def geocode(q):
+    """Look a place name up on OpenStreetMap Nominatim (cached; at most 1 request/second)."""
+    if not q:
+        return None
+    if q in geocache:
+        return geocache[q]
+    url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({"q": q, "format": "json", "limit": 1})
+    ll = None
+    try:
+        time.sleep(1.1)
+        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+            res = json.load(r)
+            if res:
+                ll = [round(float(res[0]["lat"]), 4), round(float(res[0]["lon"]), 4)]
+    except Exception as e:
+        print(f"Geocoding failed for {q!r}: {e}")
+        return None  # don't cache failures; try again next run
+    geocache[q] = ll
+    return ll
+
+
+def map_points(days):
+    """Visitors by region (or by country when GoatCounter has no region), with coordinates."""
+    pts = []
+    countries = get("/stats/locations", **span(days), limit=20).get("stats", [])
+    for c in countries:
+        cid, cname, cn = c.get("id") or "", c.get("name") or "", c.get("count", 0)
+        if not cn or not cid:
+            continue
+        regions = []
+        try:
+            regions = [r for r in get(f"/stats/locations/{urllib.parse.quote(cid)}", **span(days), limit=50).get("stats", []) if r.get("count")]
+        except Exception as e:
+            print(f"No region detail for {cid}: {e}")
+        named = [r for r in regions if (r.get("name") or "").strip() and (r.get("name") or "").strip().lower() not in ("unknown", "(unknown)")]
+        placed = 0
+        for r in named:
+            ll = geocode(f"{r['name']}, {cname}")
+            if ll:
+                pts.append({"name": r["name"], "country": cname, "lat": ll[0], "lon": ll[1], "n": r["count"]})
+                placed += r["count"]
+        rest = cn - placed
+        if rest > 0:
+            ll = country_coords(cid, cname)
+            if ll:
+                pts.append({"name": cname if not placed else f"{cname} (region unknown)", "country": cname, "lat": ll[0], "lon": ll[1], "n": rest, "country_level": True})
+    return pts
+
+
 def hour(t):
     return t.replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -82,7 +163,9 @@ for days in RANGES:
     for page in LISTS:
         res = get(f"/stats/{page}", **span(days), limit=10)
         r[page] = [{"name": s.get("name") or "", "n": s.get("count", 0)} for s in res.get("stats", []) if s.get("count")]
+    r["map"] = map_points(days)
     data["ranges"][str(days)] = r
+data["geocache"] = geocache
 
 # Skip rewriting when nothing but the timestamp changed
 body = {k: v for k, v in data.items() if k != "generated_at"}

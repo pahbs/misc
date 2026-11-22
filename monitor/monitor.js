@@ -116,6 +116,7 @@ function render() {
 
   $("#listNote").textContent = path ? "These lists are for all pages." : "";
   renderList("toprefs", R.toprefs, "toprefs"); renderList("locations", R.locations); renderList("systems", R.systems); renderList("browsers", R.browsers);
+  renderMap(R.map);
 
   const g = new Date(D.generated_at);
   $("#source").innerHTML = `<span class="dot live"></span>Unlocked · stats as of ${g.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
@@ -158,6 +159,49 @@ function renderList(id, list, kind) {
     const name = s.name || (kind === "toprefs" ? "Direct, or link from an app or text" : "(unknown)");
     return `<div class="bi"><i style="width:${(s.n / max * 100).toFixed(1)}%"></i><span title="${esc(name)}">${esc(name)}</span><b>${num(s.n)}</b></div>`;
   }).join("");
+}
+
+// ---------- map ----------
+let map = null, layer = null, fitted = null;
+function renderMap(points) {
+  points = (points || []).filter(p => p.n > 0 && isFinite(p.lat) && isFinite(p.lon)).sort((a, b) => b.n - a.n);
+  $("#mapNote").textContent = state.path ? "Locations are for all pages." : "Pinch or scroll to zoom. Tap a circle for details.";
+  // side list of top places
+  const max = Math.max(1, ...points.map(p => p.n));
+  $("#places").innerHTML = points.length ? points.slice(0, 8).map(p => {
+    const label = p.country_level ? p.name : `${p.name}, ${p.country}`;
+    return `<div class="bi"><i style="width:${(p.n / max * 100).toFixed(1)}%"></i><span title="${esc(label)}">${esc(label)}</span><b>${num(p.n)}</b></div>`;
+  }).join("") : `<p class="empty">Nothing yet.</p>`;
+
+  const box = $("#map");
+  if (!window.L) { box.innerHTML = `<div class="empty-map">The map couldn't load. A content blocker may be stopping unpkg.com or the map tiles.</div>`; return; }
+  if (!map) {
+    map = L.map(box, { worldCopyJump: true, scrollWheelZoom: true, zoomSnap: 0.5 }).setView([30, -40], 2);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 12, subdomains: "abcd",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(map);
+    layer = L.layerGroup().addTo(map);
+  }
+  layer.clearLayers();
+  const rad = n => 5 + 22 * Math.sqrt(n / max);
+  // biggest first so small circles stay clickable on top
+  for (const p of points) {
+    const label = p.country_level ? p.name : `${p.name}, ${p.country}`;
+    L.circleMarker([p.lat, p.lon], {
+      radius: rad(p.n), color: "#1b1a17", weight: 1.2, fillColor: p.country_level ? "#857c6b" : "#1b1a17", fillOpacity: .55,
+    }).bindPopup(`<b>${esc(label)}</b><br>${num(p.n)} unique visitor${p.n === 1 ? "" : "s"} · last ${state.days} days`)
+      .bindTooltip(`${esc(label)}: ${num(p.n)}`, { direction: "top", offset: [0, -4] })
+      .addTo(layer);
+  }
+  // zoom to fit the visitors once per range, not on every re-render
+  const key = state.days + ":" + points.length;
+  if (points.length && fitted !== key) {
+    fitted = key;
+    const b = L.latLngBounds(points.map(p => [p.lat, p.lon]));
+    map.fitBounds(b.pad(0.35), { maxZoom: 6 });
+  }
+  setTimeout(() => map.invalidateSize(), 0);
 }
 
 // ---------- flow ----------
