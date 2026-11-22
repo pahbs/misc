@@ -28,7 +28,7 @@ jobs:
         run: python monitor/fetch_stats.py
       - name: Commit if changed
         run: |
-          if git diff --quiet -- monitor/data; then
+          if [ -z "$(git status --porcelain -- monitor/data)" ]; then
             echo "No changes."
             exit 0
           fi
