@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Site monitor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231b1a17'/><path d='M5 22l6-7 5 4 6-9 5 5' stroke='%23f6f1e7' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../workouts/plank/style.css?v=2026112201">
+<link rel="stylesheet" href="monitor.css?v=2026112201">
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Private · pahbs.github.io</p>
+    <h1>Site monitor</h1>
+    <p class="sub">Unique visitors to my pages, from GoatCounter.</p>
+    <div class="source" id="source">Not connected</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Locked state -->
+  <section class="card" id="lock" hidden>
+    <h2>Connect GoatCounter</h2>
+    <p class="note">Paste a GoatCounter API key with <b>read statistics</b> permission. It's saved only in this browser and sent only to pahbs.goatcounter.com. Nothing shows on this page without it.</p>
+    <form id="keyForm" class="keyform" autocomplete="off">
+      <input id="keyInput" type="password" placeholder="API key" spellcheck="false" aria-label="GoatCounter API key">
+      <button class="btn" type="submit">Connect</button>
+    </form>
+    <p class="err" id="keyErr" hidden></p>
+    <p class="note small">Create a key at <a href="https://pahbs.goatcounter.com/user/api" target="_blank" rel="noopener">pahbs.goatcounter.com → your name → API</a>.</p>
+  </section>
+
+  <!-- Dashboard -->
+  <div id="dash" hidden>
+    <section class="card toolbar">
+      <div class="seg" id="rangeSeg">
+        <button data-days="7">7 days</button>
+        <button data-days="30" class="on">30 days</button>
+        <button data-days="90">90 days</button>
+        <button data-days="365">1 year</button>
+      </div>
+      <div class="tools">
+        <label class="chk"><input type="checkbox" id="skipMe"> Don't count my visits on this browser</label>
+        <button class="btn ghost" id="refresh">Refresh</button>
+        <button class="btn ghost" id="forget">Forget key</button>
+      </div>
+    </section>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card">
+      <div class="card-head"><h2 id="trendTitle">Unique visitors per day</h2><span class="note" id="trendNote"></span></div>
+      <div class="chart" id="trend"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Pages</h2><span class="note">Click a page to filter everything to it.</span></div>
+      <div id="pages"></div>
+    </section>
+
+    <section class="grid-3">
+      <div class="card"><h2>Where visitors came from</h2><div class="blist" id="toprefs"></div></div>
+      <div class="card"><h2>Locations</h2><div class="blist" id="locations"></div></div>
+      <div class="card"><h2>Devices</h2><div class="blist" id="systems"></div><h3>Browsers</h3><div class="blist" id="browsers"></div></div>
+    </section>
+
+    <footer class="foot"><p>Visitor counts are GoatCounter's cookie-free unique visitors. This page isn't counted. <a href="https://pahbs.goatcounter.com" target="_blank" rel="noopener">Open GoatCounter →</a></p></footer>
+  </div>
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+<script src="monitor.js?v=2026112201"></script>
+</body>
+</html>
