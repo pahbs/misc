@@ -54,3 +54,4 @@
 .grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
 .grid-2b>.card{margin-bottom:0}
 @media (max-width:800px){.grid-2b{grid-template-columns:1fr}}
+.map .leaflet-tile-pane{filter:grayscale(1) sepia(.18) contrast(.92) brightness(1.04)}

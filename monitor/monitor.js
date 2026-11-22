@@ -177,9 +177,10 @@ function renderMap(points) {
   if (!window.L) { box.innerHTML = `<div class="empty-map">The map couldn't load. A content blocker may be stopping unpkg.com or the map tiles.</div>`; return; }
   if (!map) {
     map = L.map(box, { worldCopyJump: true, scrollWheelZoom: true, zoomSnap: 0.5 }).setView([30, -40], 2);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 12, subdomains: "abcd",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // OpenStreetMap's standard tiles: free, no key; muted with CSS (.map .leaflet-tile-pane) to suit the page
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 12,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     layer = L.layerGroup().addTo(map);
   }
