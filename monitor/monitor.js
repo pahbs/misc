@@ -114,9 +114,11 @@ function render() {
     const id = +r.dataset.id; state.path = state.path === id ? null : id; render();
   });
 
-  $("#listNote").textContent = path ? "These lists are for all pages." : "";
-  renderList("toprefs", R.toprefs, "toprefs"); renderList("locations", R.locations); renderList("systems", R.systems); renderList("browsers", R.browsers);
-  renderMap(R.map);
+  // Locations for the selected page, when the stats file has them (the busiest pages of each range)
+  const P = path ? (R.by_path || {})[String(path.id)] : null;
+  $("#listNote").textContent = path ? "Referrers and devices are for all pages." : "";
+  renderList("toprefs", R.toprefs, "toprefs"); renderList("locations", P ? P.locations : R.locations); renderList("systems", R.systems); renderList("browsers", R.browsers);
+  renderMap(P ? P.map : R.map, path ? (P ? `Visitors to ${pathName}.` : "Locations are for all pages: none saved for this page yet.") : "");
 
   renderSource();
 }
@@ -182,9 +184,9 @@ function renderList(id, list, kind) {
 
 // ---------- map ----------
 let map = null, layer = null, fitted = null;
-function renderMap(points) {
+function renderMap(points, note) {
   points = (points || []).filter(p => p.n > 0 && isFinite(p.lat) && isFinite(p.lon)).sort((a, b) => b.n - a.n);
-  $("#mapNote").textContent = state.path ? "Locations are for all pages." : "Pinch or scroll to zoom. Tap a circle for details.";
+  $("#mapNote").textContent = note || "Pinch or scroll to zoom. Tap a circle for details.";
   // side list of top places
   const max = Math.max(1, ...points.map(p => p.n));
   $("#places").innerHTML = points.length ? points.slice(0, 8).map(p => {
@@ -214,8 +216,8 @@ function renderMap(points) {
       .bindTooltip(`${esc(label)}: ${num(p.n)}`, { direction: "top", offset: [0, -4] })
       .addTo(layer);
   }
-  // zoom to fit the visitors once per range, not on every re-render
-  const key = state.days + ":" + points.length;
+  // zoom to fit the visitors once per range and page, not on every re-render
+  const key = state.days + ":" + state.path + ":" + points.length;
   if (points.length && fitted !== key) {
     fitted = key;
     const b = L.latLngBounds(points.map(p => [p.lat, p.lon]));

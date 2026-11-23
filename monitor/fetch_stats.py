@@ -20,6 +20,7 @@ RANGES = [7, 30, 90, 365]
 LISTS = ["toprefs", "locations", "systems", "browsers"]
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "stats.enc.json")
 ITER = 310_000
+PAGE_MAPS = 40  # per range, locations are also saved for each of this many busiest pages (the page filter on the monitor)
 
 TOKEN = os.environ.get("GOATCOUNTER_TOKEN", "").strip()
 PASS = os.environ.get("MONITOR_PASSPHRASE", "")
@@ -102,17 +103,19 @@ def geocode(q):
     return ll
 
 
-def map_points(days):
-    """Visitors by region (or by country when GoatCounter has no region), with coordinates."""
+def map_points(days, path_id=None):
+    """Visitors by region (or by country when GoatCounter has no region), with coordinates, and visitors by country.
+    With path_id, only the visitors to that page."""
+    only = {} if path_id is None else {"include_paths": path_id}
     pts = []
-    countries = get("/stats/locations", **span(days), limit=20).get("stats", [])
+    countries = get("/stats/locations", **span(days), limit=20, **only).get("stats", [])
     for c in countries:
         cid, cname, cn = c.get("id") or "", c.get("name") or "", c.get("count", 0)
         if not cn or not cid:
             continue
         regions = []
         try:
-            regions = [r for r in get(f"/stats/locations/{urllib.parse.quote(cid)}", **span(days), limit=50).get("stats", []) if r.get("count")]
+            regions = [r for r in get(f"/stats/locations/{urllib.parse.quote(cid)}", **span(days), limit=50, **only).get("stats", []) if r.get("count")]
         except Exception as e:
             print(f"No region detail for {cid}: {e}")
         named = [r for r in regions if (r.get("name") or "").strip() and (r.get("name") or "").strip().lower() not in ("unknown", "(unknown)")]
@@ -127,7 +130,7 @@ def map_points(days):
             ll = country_coords(cid, cname)
             if ll:
                 pts.append({"name": cname if not placed else f"{cname} (region unknown)", "country": cname, "lat": ll[0], "lon": ll[1], "n": rest, "country_level": True})
-    return pts
+    return pts, [{"name": c.get("name") or "", "n": c.get("count", 0)} for c in countries if c.get("count")][:10]
 
 
 def hour(t):
@@ -163,7 +166,19 @@ for days in RANGES:
     for page in LISTS:
         res = get(f"/stats/{page}", **span(days), limit=10)
         r[page] = [{"name": s.get("name") or "", "n": s.get("count", 0)} for s in res.get("stats", []) if s.get("count")]
-    r["map"] = map_points(days)
+    r["map"] = map_points(days)[0]
+    # The same for each page with visits in this range, busiest first: the map follows the page filter on the monitor
+    first = (now - dt.timedelta(days=days)).strftime("%Y-%m-%d")
+    busy = sorted(((sum(n for d, n in p["daily"].items() if d >= first), p["id"]) for p in paths), reverse=True)
+    r["by_path"] = {}
+    for n, pid in busy[:PAGE_MAPS]:
+        if not n or pid is None:
+            continue
+        try:
+            pts, locs = map_points(days, pid)
+            r["by_path"][str(pid)] = {"map": pts, "locations": locs}
+        except Exception as e:  # leave this page out: the monitor shows all pages' locations for it
+            print(f"No locations for page {pid} ({days} days): {e}")
     data["ranges"][str(days)] = r
 data["geocache"] = geocache
 
